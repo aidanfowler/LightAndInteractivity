@@ -4,6 +4,14 @@
   HTTP request code from Tom Igoe
   Uses Rune Madsen's HTTP library, so you need to install it from the library manager. 
   created 18 April 2020
+  Usage:
+    -Click to turn on first light (or press 1). 
+    -2 and 3 keys toggle 2nd and 3rd lights, will use mouse 
+     position when key is pressed to determine color
+    -drag circles to change light color/brightness
+    -can change just brightness with up and down keys 
+    -dont hold down up and down keys because server calls 
+    -will stack up and you will overshoot
 */
 
 import http.requests.*;
@@ -16,6 +24,7 @@ String username = "3hDIo9lwwF9TZCgo6lmlQB51pI3HXD2knPKuebu3";
 int lightNumber = 1;
 boolean lightState = true;
 PImage colorPicker;
+PImage colorPicker2;
 int currentLight=0;
 int light1X = 0;
 int light1Y = 0;
@@ -29,21 +38,23 @@ boolean light3On = false;
 int brightnessAdjust = 0;
 
 public void setup() {
-  size(400, 400);
-  colorPicker = loadImage("color_circle.png");
+  size(1200, 600);
+  colorPicker = loadImage("colorPicker.jpg");
+  colorPicker2 = loadImage("ColorWheel.png");
   smooth();
   stroke(0);
   noFill();
   strokeWeight(2);
   //turn off all lights to start
-  sendColorUpdate(get(0,0),1,false);
-  sendColorUpdate(get(0,0),2,false);
-  sendColorUpdate(get(0,0),3,false); 
+  sendColorUpdate(0,1,false);
+  sendColorUpdate(0,2,false);
+  sendColorUpdate(0,3,false); 
 }
 
 void draw() {
   background(255);
-  image(colorPicker,0,0,width,height);
+  image(colorPicker,0,0,width/2,height);
+  image(colorPicker2,width/2,0,width/2,height);
   //circle to display current light colors
   if(light1X>0 && light1On){
     circle(light1X, light1Y, 25);
@@ -64,7 +75,7 @@ void sendColorUpdate(color currentColor, int lightNumber, boolean status){
   int hue = int(map(hue(currentColor),0,255,0,65535));
   int bri = int(brightness(currentColor));
   int sat = int(saturation(currentColor));
-  bri = bri+brightnessAdjust;
+  bri = bri+brightnessAdjust-180; //take an extra 80 off so that it doesnt start super bright
   bri = constrain(bri,0,255);
   println("sending command");
    // form the request string: http://hue.hub.ip.address/apu/username/lights/lightNumber/state/ :
@@ -130,7 +141,7 @@ void keyPressed(){
 
 void updateAllLights(){
   if(light1On){
-    sendColorUpdate(get(light1X,light2X),1,true);
+    sendColorUpdate(get(light1X,light1Y),1,true);
   }
   if(light2On){
     sendColorUpdate(get(light2X,light2Y),2,true);
@@ -175,10 +186,11 @@ void mouseClicked(){
     refreshCircles();
     sendColorUpdate(get(mouseX,mouseY),currentLight,true);
   }
+  refreshCircles();
 }
 
 void mouseDragged(){
-  refreshCircles();
+  refreshCircles(); 
 }
 
 void mouseReleased(){
