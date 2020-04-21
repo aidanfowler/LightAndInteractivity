@@ -46,7 +46,7 @@ int brightnessAdjust = 0;
 
 public void setup() {
   size(1920, 720);
-  ourMovie = new Movie(this, "test.mp4"); 
+  ourMovie = new Movie(this, "tsrobo1-2020-04-19-0100.mp4"); 
   ourMovie.loop();  
   colorPicker = loadImage("ColorWheel.png");
   smooth();
