@@ -4,3 +4,5 @@ https://www.earthcam.com/cams/newyork/timessquare/?cam=tsrobo3
 
 (24 hour video downloaded with https://github.com/gltd/earth-cam-downloader on 4.20.2020)
 
+https://youtu.be/AXPnLoONpkM
+
