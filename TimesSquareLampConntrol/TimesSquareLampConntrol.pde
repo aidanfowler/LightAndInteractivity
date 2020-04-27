@@ -4,10 +4,10 @@
   HTTP request code from Tom Igoe
   Uses Rune Madsen's HTTP library, so you need to install it from the library manager. 
   created 26 April 2020
-  Reads webcam data (movie), translates video colors to hue colors using playhead to look at different sections of image
-  At sunset (6pm) the lights will turn on and a sunset movie will briefly play mapped to the hue bulbs
-  After the sunset, until sunrise, a 12 hour webcam timelapse of times square will map to the hue bulbs scanning accross the image
-  As if you were in times square looking around at the screens
+  Reads webcam data (movie), translates video colors to hue colors using playhead to look at different sections 
+  of image at sunset (6pm) the lights will turn on and a sunset movie will briefly play mapped to the hue bulbs
+  After the sunset, until sunrise, a 12 hour webcam timelapse of times square will map to the hue bulbs scanning
+  accross the image As if you were in times square looking around at the screens
   When the sun rises (6am) the lights will turn off
 */
 
@@ -30,6 +30,7 @@ String server = "http://192.168.1.136";
 // Hue hub user name. Fill in yours here:
 String username = "3hDIo9lwwF9TZCgo6lmlQB51pI3HXD2knPKuebu3";
 boolean sendRequest = true;
+boolean drawImageOnScreen = true;
 //scanner locations for each light
 int scanStart;
 int scanStart2;
@@ -40,18 +41,21 @@ int scanWidth = 0;
 int savedTime;
 int timerLength = 250;
 int switchLight = 1;
-int brightnessAdjust = 0;
+int brightnessAdjust = -60;
 boolean sunrise = false;
 boolean sunset = false;
 boolean timesSquare = false;
 boolean lampOff = true;
 int sunRiseTime = 6; //6am
-int sunSetTime = 18; //6pm
-
+int sunSetTime = 23; //6pm
+//found these with mouseX and mouseY until I got a pleasing color range and flashiness 
+int brightnessThreshold = 440;
+int saturationMultiplier = 521;
+int margin = 120;
 public void setup() {
-  size(1920, 720);
+  size(1380, 720);
   sunsetMovie = new Movie(this,"sunset.mp4");
-  timesSquareMovie = new Movie(this,"test.mp4"); 
+  timesSquareMovie = new Movie(this,"TimesSquareDuskToDawn.mp4"); 
   //need this so we have the movie width when initializing the scanner width
   smooth();
   stroke(255);
@@ -59,6 +63,7 @@ public void setup() {
   strokeWeight(2);
   drawImage = new PImage(1280,720);
   turnOffLights();
+  delay(2000);
   savedTime = millis();
   background(255);
 }
@@ -73,33 +78,34 @@ void draw() {
       processImageGetLight(scanStart,scanStart +scanWidth,0,ourMovie.height/3);
       if(switchLight == 1){
         //draw light and send update to corresponding hue light
-        updateLight(width/3-100,100,100,1);
+        updateLight(margin/2,100,100,1);
       }
       //process middle third of screen to get a color
       processImageGetLight(scanStart2,scanStart2 + scanWidth,ourMovie.height/3,2*ourMovie.height/3);
       if(switchLight == 2){      
         //draw light and send update to corresponding hue light
-        updateLight(width/3-100,height/3+100,100,2);
+        updateLight(margin/2,height/3+100,100,2);
       }
       //process bottom third of screen to get a color
       processImageGetLight(scanStart3,scanStart3 + scanWidth,2*ourMovie.height/3,ourMovie.height);
       if(switchLight == 3){
         //draw light and send update to corresponding hue light
-        updateLight(width/3-100,2*height/3+100,100,3);
+        updateLight(margin/2,2*height/3+100,100,3);
       }
-      //refresh image on screen with pixels that were used to set lights
-      drawImage.updatePixels();
-      image(drawImage,width/3,0,2*width/3,height); 
-      //draw line divisions
-      stroke(255);
-      noFill();
-      //draw rectangles
-      rect(scanStart+width/3,0,scanWidth,ourMovie.height/3);
-      rect(scanStart2+width/3,height/3,scanWidth,ourMovie.height/3);
-      rect(scanStart3+width/3,2*height/3,scanWidth,ourMovie.height/3);
-      line(width/3,height/3,width,height/3);
-      line(width/3,2*height/3,width,2*height/3);
-      
+      if(drawImageOnScreen){
+        //refresh image on screen with pixels that were used to set lights
+        drawImage.updatePixels();
+        image(drawImage,margin,0,drawImage.width,drawImage.height); 
+        //draw line divisions
+        stroke(255);
+        noFill();
+        //draw rectangles
+        rect(scanStart+margin,0,scanWidth,ourMovie.height/3);
+        rect(scanStart2+margin,height/3,scanWidth,ourMovie.height/3);
+        rect(scanStart3+margin,2*height/3,scanWidth,ourMovie.height/3);
+        line(margin,height/3,width,height/3);
+        line(margin,2*height/3,width,2*height/3);
+      }
       //update scanner areas
       updateScanner();
     }
@@ -108,7 +114,7 @@ void draw() {
     background(255);
     textSize(50);
     fill(0);
-    text("LAMP IS OFF",1*width/3+100,200);
+    text("LAMP IS OFF",100,200);
   }
 }
 
@@ -176,7 +182,7 @@ void updateLight(int x, int y, int d, int l){
   totalR /= totalCountedPixels;
   totalG /= totalCountedPixels;
   totalB /= totalCountedPixels;
-  if(totalR+totalG+totalB > mouseX || sunset){
+  if(totalR+totalG+totalB > brightnessThreshold || sunset){
     color newColor = color(totalR,totalG,totalB);
     fill(newColor);
     circle(x,y,d);
@@ -217,14 +223,14 @@ void processImageGetLight(int startX, int stopX, int startY, int stopY){
     for (int y = startY; y<stopY-1; y++) {
       PxPGetPixel(x, y, ourMovie.pixels, ourMovie.width);     // get the RGB of our pixel and place in RGB globals
       
-      if ((R+G+B)  <mouseX && timesSquare) {                // threshold on mouseX 
+      if ((R+G+B)  <brightnessThreshold && timesSquare) {                // threshold on mouseX 
         R=0;
         G=0;
         B=0;                                         
       }        
       else{
         totalCountedPixels++;
-        saturate(mouseY);
+        saturate(saturationMultiplier);
       }
       PxPSetPixel(x, y, R, G, B, 255, drawImage.pixels, ourMovie.width);    // sets the R,G,B values to the window
       totalR += R;
@@ -297,8 +303,11 @@ void turnOffLights(){
   sendColorUpdate(0,2,false);
   sendColorUpdate(0,3,false);
 }
-void mouseCLicked(){
-  println("mouse:X",mouseX,"mouse:Y",mouseY);
+
+void keyPressed(){
+  if (key == 'd'){
+    drawImageOnScreen = !drawImageOnScreen;
+  }
 }
 // our function for getting color components , it requires that you have global variables
 // R,G,B   (not elegant but the simples way to go, see the example PxP methods in object for 
